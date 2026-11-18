@@ -25,19 +25,30 @@ function getOrigin (geometry) {
   }
 }
 
-// Wall edges for texture sets (src/texset/Texset.js): [lonA, latA, lonB, latB, side, base, top] per edge of every ring.
+// Wall edges for texture sets (src/texset/Texset.js): [lonA, latA, lonB, latB, side, base, top, id] per edge of every ring.
 // side = +1 when the outer face lies to the right of A -> B, -1 when it lies to the left. The outer face of an outer ring
 // faces away from the polygon, the one of an inner ring faces into the courtyard (away from the building solid).
-function getWallEdges (geometry, properties) {
+function getWallEdges (geometry, properties, id) {
   const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] :
     geometry.type === 'MultiPolygon' ? geometry.coordinates : [];
 
   const levelHeight = 3; // METERS_PER_LEVEL of the triangulation
   const base = properties.minHeight || (properties.minLevel ? properties.minLevel * levelHeight : 0);
-  let top = null;
+  // same rules as the wall height of the triangulation (src/triangulate/index.js)
+  let roofHeight = properties.roofHeight || (properties.roofLevels ? properties.roofLevels * levelHeight : 0);
+  switch (properties.roofShape) {
+    case 'gabled': case 'hipped': case 'half-hipped': case 'skillion': case 'gambrel': case 'mansard': case 'round':
+      roofHeight = roofHeight || levelHeight;
+      break;
+    case 'cone': case 'pyramid': case 'dome': case 'onion':
+      break; // depends on the radius; not needed for walls of other shapes
+    default:
+      roofHeight = 0;
+  }
+  let top = 10; // DEFAULT_HEIGHT of the triangulation
   if (properties.height !== undefined) {
-    top = properties.height - (properties.roofHeight || 0);
-  } else if (properties.levels) {
+    top = properties.height - Math.min(roofHeight, properties.height);
+  } else if (properties.levels !== undefined) {
     top = properties.levels * levelHeight;
   }
 
@@ -51,7 +62,7 @@ function getWallEdges (geometry, properties) {
       const ccw = area > 0;
       const side = (ringIndex === 0) === ccw ? 1 : -1;
       for (let i = 0; i < ring.length - 1; i++) {
-        edges.push([ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1], side, base, top]);
+        edges.push([ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1], side, base, top, id]);
       }
     });
   });
@@ -145,7 +156,7 @@ function processGeoJSON (geojson, options) {
       id = options.id || feature.id,
       pickingColor = getPickingColor(index); // picks per part id - could perhaps use building id
 
-    const walls = getWallEdges(feature.geometry, properties); // before triangulation, which may change the geometry
+    const walls = getWallEdges(feature.geometry, properties, id); // before triangulation, which may change the geometry
 
     let vertexCount = tri.vertices.length;
     triangulate(tri, feature, origin);

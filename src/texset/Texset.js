@@ -195,7 +195,7 @@ class Texset {
       }
       this.cells[key] = cell;
       if (cell) {
-        this.mergeAttribution(cell.attribution, `${this.mirrors[this.mirrorIndex].url}textures/${this.region}/${this.release}/credits/16/${x}/${y}.html`);
+        this.mergeAttribution(cell.attribution, `${this.mirrors[this.mirrorIndex].url}textures/${this.region}/${this.release}/credits/16/${x}/${y}.html`, `credits ${x}/${y}`);
         this.dirty = true;
       }
     }).catch(err => {
@@ -280,7 +280,7 @@ class Texset {
           const page = cell.pages[surface.page];
           let drawable = null;
           if (surface.edge) {
-            drawable = this.buildWall(surface, page, clientEdges);
+            drawable = this.buildWall(surface, object, page, clientEdges);
           } else if (surface.plane && /:face$/.test(surface.key)) {
             drawable = this.buildNodeFace(surface, page);
           } // roofs and others: conformance level 2, not implemented -> T0
@@ -295,27 +295,40 @@ class Texset {
     this.onChange();
   }
 
-  findEdge (surface, clientEdges) {
+  // Position matching: both end points within the tolerance, either direction. Neighbouring buildings share edges
+  // (party walls), so several client edges can match; then the one of the same OSM object wins (feature id equal to
+  // the record's object, its relation or the way of the key), else one in the stored direction (way order).
+  findEdge (surface, object, clientEdges) {
     const [lonA, latA, lonB, latB] = surface.edge;
     const mLon = METERS_PER_DEGREE_LATITUDE * Math.cos(latA / 180 * Math.PI);
     const dist = (lon1, lat1, lon2, lat2) => Math.hypot((lon1 - lon2) * mLon, (lat1 - lat2) * METERS_PER_DEGREE_LATITUDE);
     const tol = this.tolerance;
+    const ids = [object.osm, object.relation, surface.key.split(':')[0]].filter(Boolean).map(String);
+    let best = null, bestScore = -1;
     for (let i = 0; i < clientEdges.length; i++) {
       const e = clientEdges[i];
+      let match = null;
       if (dist(e[0], e[1], lonA, latA) <= tol && dist(e[2], e[3], lonB, latB) <= tol) {
-        return { a: [e[0], e[1]], b: [e[2], e[3]], side: e[4], base: e[5], top: e[6] };
-      }
-      if (dist(e[2], e[3], lonA, latA) <= tol && dist(e[0], e[1], lonB, latB) <= tol) {
+        match = { a: [e[0], e[1]], b: [e[2], e[3]], side: e[4], base: e[5], top: e[6], reversed: false, edge: e };
+      } else if (dist(e[2], e[3], lonA, latA) <= tol && dist(e[0], e[1], lonB, latB) <= tol) {
         // reversed: keep the stored direction a -> b; the outer side flips with the direction
-        return { a: [e[2], e[3]], b: [e[0], e[1]], side: -e[4], base: e[5], top: e[6] };
+        match = { a: [e[2], e[3]], b: [e[0], e[1]], side: -e[4], base: e[5], top: e[6], reversed: true, edge: e };
+      }
+      if (!match) {
+        continue;
+      }
+      const score = (e[7] !== undefined && ids.indexOf(String(e[7])) >= 0 ? 2 : 0) + (match.reversed ? 0 : 1);
+      if (score > bestScore) {
+        best = match;
+        bestScore = score;
       }
     }
-    return null;
+    return best;
   }
 
   // wall frame: u from a to b in metres, v up from the wall base; texture on the outer face
-  buildWall (surface, page, clientEdges) {
-    const match = this.findEdge(surface, clientEdges);
+  buildWall (surface, object, page, clientEdges) {
+    const match = this.findEdge(surface, object, clientEdges);
     if (!match) {
       return null;
     }
@@ -382,7 +395,7 @@ class Texset {
   //***************************************************************************
   // attribution: one line, one link per entry, de-duplicated by id
 
-  mergeAttribution (entries = [], creditsUrl = null) {
+  mergeAttribution (entries = [], creditsUrl = null, creditsText = 'texture credits') {
     let changed = false;
     entries.forEach(entry => {
       if (!this.attribution.some(a => a.id === entry.id)) {
@@ -391,7 +404,7 @@ class Texset {
       }
     });
     if (creditsUrl && !this.attribution.some(a => a.url === creditsUrl)) {
-      this.attribution.push({ id: `credits:${creditsUrl}`, text: 'texture credits', url: creditsUrl });
+      this.attribution.push({ id: `credits:${creditsUrl}`, text: creditsText, url: creditsUrl });
       changed = true;
     }
     if (changed) {

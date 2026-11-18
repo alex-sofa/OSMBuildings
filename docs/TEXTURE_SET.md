@@ -24,6 +24,7 @@ const osmb = new OSMBuildings({
 | format check (`osm3d-texset/0.3` exactly; anything else: no textures) | yes |
 | cells (XYZ z16) for the bounding boxes of the loaded buildings, 404 = no textures there | yes |
 | **walls** (conformance level 1): matched **by position** against the stored `edge` (both end points within 0.3 m, either direction), because the GeoJSON tiles have no OSM node ids; wall frame u = a -> b, v up from the wall base; outer face from the ring winding (inner rings face the courtyard); texture rectangle clipped to the wall | yes |
+| shared edges of neighbouring buildings (party walls): several client edges match; the edge of the same OSM object wins (feature `id` = record object, relation or way of the key), else the one in the stored direction | yes |
 | **node faces** (`n<id>:face`, e.g. billboards): drawn as free-standing quads from `plane` and `size_m`, front = `u x v`, back in the T0 colour | yes |
 | T0: the surface colour is shown until the page has loaded | yes |
 | pages: the `web` derivative (WebP), checked against `sha256`; no KTX2/Basis transcoder (WebGL1) | yes |
@@ -32,7 +33,7 @@ const osmb = new OSMBuildings({
 
 ## How it is built
 
-- `src/features/worker.js` adds the wall edges of every building (`[lonA, latA, lonB, latB, side, base, top]`) to the loaded items.
+- `src/features/worker.js` adds the wall edges of every building (`[lonA, latA, lonB, latB, side, base, top, id]`, wall base and top with the same rules as the triangulation) to the loaded items.
 - `src/texset/Texset.js` loads the records, matches them and builds one quad per surface (3 cm in front of the wall).
 - `src/view/Texset.js` and `src/shader/texset.*` draw the quads after the buildings, with the same fog as the base map;
   front/back is decided per pixel from the surface normal and the camera position.
