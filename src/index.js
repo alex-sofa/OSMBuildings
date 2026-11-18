@@ -60,7 +60,7 @@ class OSMBuildings {
    * @param {Boolean} [options.fastMode=false] Enables faster rendering at cost of image quality.
    * @param {Object} [options.style] Sets the default building style
    * @param {String} [options.style.color='rgb(220, 210, 200)'] Sets the default building color
-   * @param {Object} [options.textureSet] Streams textures per OSM object (format osm3d-texset/0.3, docs/TEXTURE_SET.md); off by default
+   * @param {Object} [options.textureSet] Streams textures per OSM object (format osm3d-texset/0.4, docs/TEXTURE_SET.md); off by default
    * @param {String|String[]} [options.textureSet.bootstrap='https://textures.malpy.de/'] Entry URL(s) that serve textures/<region>/latest.json
    * @param {String} [options.textureSet.region='bodensee'] Region of the texture set
    */

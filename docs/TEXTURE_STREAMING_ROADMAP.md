@@ -1,6 +1,6 @@
 # Roadmap: streamed textures per OSM entity
 
-Status: draft · scope: phase 1 covers **walls only** · **implemented (experimental): walls and node faces with the `web` derivative, see [TEXTURE_SET.md](TEXTURE_SET.md)** · data format: `osm3d-texset/0.3` (texture set records served as static files, see the client specification of the
+Status: draft · scope: phase 1 covers **walls only** · **implemented (experimental): walls and node faces with the `web` derivative, see [TEXTURE_SET.md](TEXTURE_SET.md)** · data format: `osm3d-texset/0.4` (texture set records served as static files, see the client specification of the
 texture project: `docs/TEXTURE_CLIENT_SPEC.md` and `docs/TEXTURE_FORMAT.md` in https://github.com/alexschultze/dev-open-3d-builder)
 
 ## Goal

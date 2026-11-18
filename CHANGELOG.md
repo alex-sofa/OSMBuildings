@@ -2,7 +2,7 @@
 
 ## Added
 
-- experimental option `textureSet`: streams textures per OSM object (format osm3d-texset/0.3) and draws them on matching walls and as free-standing node faces; off by default (docs/TEXTURE_SET.md)
+- experimental option `textureSet`: streams textures per OSM object (format osm3d-texset/0.4) and draws them on matching walls, wall chains and part walls and as free-standing node faces; off by default (docs/TEXTURE_SET.md)
 
 
 

@@ -53,7 +53,7 @@ function getWallEdges (geometry, properties, id) {
   }
 
   const edges = [];
-  polygons.forEach(rings => {
+  polygons.forEach((rings, polygonIndex) => {
     rings.forEach((ring, ringIndex) => {
       let area = 0;
       for (let i = 0; i < ring.length - 1; i++) {
@@ -62,7 +62,8 @@ function getWallEdges (geometry, properties, id) {
       const ccw = area > 0;
       const side = (ringIndex === 0) === ccw ? 1 : -1;
       for (let i = 0; i < ring.length - 1; i++) {
-        edges.push([ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1], side, base, top, id]);
+        // ring id and position: wall chains walk consecutive edges of one ring
+        edges.push([ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1], side, base, top, id, `${id}/${polygonIndex}/${ringIndex}`, i]);
       }
     });
   });
