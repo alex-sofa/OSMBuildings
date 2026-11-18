@@ -10,7 +10,7 @@ const osmb = new OSMBuildings({
   position: { latitude: 47.67216, longitude: 9.49049 },
   zoom: 19,
   textureSet: {
-    bootstrap: 'https://textures.malpy.de/',   // or a list; serves textures/<region>/latest.json
+    cdns: 'https://textures-cdn1.malpy.de/',   // or a list; each serves textures/<region>/latest.json
     region: 'bodensee'
   }
 });
@@ -20,7 +20,7 @@ const osmb = new OSMBuildings({
 
 | Spec item | Status |
 | --- | --- |
-| `latest.json` -> mirror (weighted random, failover on network errors, 429, 5xx) -> `manifest.json` | yes |
+| `latest.json` from every configured cdn (highest `release` wins) -> cdn from its `cdns` (weighted random, failover on network errors, 429, 5xx) -> `manifest.json` | yes |
 | format check (`osm3d-texset/0.4` exactly; anything else, including older versions: no textures) | yes |
 | cells (XYZ z16) for the bounding boxes of the loaded buildings, 404 = no textures there | yes |
 | **walls** (level 1): matched **by position** against the stored `edge` (both end points within 0.3 m, either direction), because the GeoJSON tiles have no OSM node ids, and accepted only if the outer normal of the client edge is within 45° of `outward`; wall frame u = a -> b, v up from the wall base; outer face from the ring winding (inner rings face the courtyard) | yes |

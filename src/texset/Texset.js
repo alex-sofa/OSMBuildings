@@ -3,7 +3,7 @@
  * Client for streamed texture sets (format osm3d-texset/0.4): conformance level 1 (walls, height model, outward test,
  * attribution scope) and the wall parts of level 2 (wall chains, part walls on outlines, node faces with basis).
  *
- * Flow: bootstrap URL -> textures/<region>/latest.json -> mirror -> manifest.json -> cell index (XYZ z16)
+ * Flow: cdn URLs -> textures/<region>/latest.json (highest release) -> cdn -> manifest.json -> cell index (XYZ z16)
  * -> `web` derivative of the atlas page (WebP; WebGL1 has no KTX2/Basis transcoder here).
  *
  * Matching: the GeoJSON data of OSM Buildings has no OSM node ids, so walls are matched by position: a building
@@ -15,13 +15,14 @@ class Texset {
 
   constructor (options = {}) {
     this.format = 'osm3d-texset/0.4'; // exact match, no other version is read
-    this.bootstrap = [].concat(options.bootstrap || Texset.DEFAULT_BOOTSTRAP);
+    // cdn base URLs of the client configuration; latest.json then lists all cdns of the release
+    this.configCdns = [].concat(options.cdns || Texset.DEFAULT_CDNS).map(url => url.endsWith('/') ? url : url + '/');
     this.region = options.region || 'bodensee';
     this.tolerance = options.tolerance || 0.3; // metres, TEXTURE_FORMAT.md position matching
     this.wallOffset = 0.03; // metres in front of the wall, against z-fighting
 
-    this.mirrors = [];
-    this.mirrorIndex = 0;
+    this.cdns = [];
+    this.cdnIndex = 0;
     this.release = null;
     this.manifest = null;
 
@@ -57,14 +58,14 @@ class Texset {
     });
   }
 
-  // tries the current mirror, fails over to the next one on network errors, 429 and 5xx
-  fetchFromMirror (path, type = 'json') {
-    const tryMirror = attempt => {
-      if (attempt >= this.mirrors.length) {
-        return Promise.reject(new Error(`no mirror delivered ${path}`));
+  // tries the current cdn, fails over to the next one on network errors, 429 and 5xx
+  fetchFromCdn (path, type = 'json') {
+    const tryCdn = attempt => {
+      if (attempt >= this.cdns.length) {
+        return Promise.reject(new Error(`no cdn delivered ${path}`));
       }
-      const mirror = this.mirrors[(this.mirrorIndex + attempt) % this.mirrors.length];
-      const url = `${mirror.url}textures/${this.region}/${path}`;
+      const cdn = this.cdns[(this.cdnIndex + attempt) % this.cdns.length];
+      const url = `${cdn.url}textures/${this.region}/${path}`;
       const request = type === 'json' ? this.fetchJSON(url) : fetch(url).then(res => {
         if (res.status === 404) {
           return null;
@@ -78,35 +79,30 @@ class Texset {
       });
       return request.catch(err => {
         if (!err.status || err.status === 429 || err.status >= 500) {
-          return tryMirror(attempt + 1);
+          return tryCdn(attempt + 1);
         }
         throw err;
       });
     };
-    return tryMirror(0);
+    return tryCdn(0);
   }
 
+  // latest.json from every configured cdn; the highest release wins (cdns may lag while a release is replicated)
   start () {
-    const tryBootstrap = i => {
-      if (i >= this.bootstrap.length) {
-        console.warn('OSMBuildings texture set: no bootstrap URL answered');
-        return Promise.resolve(null);
-      }
-      return this.fetchJSON(`${this.bootstrap[i]}textures/${this.region}/latest.json`)
-        .catch(() => null)
-        .then(latest => latest || tryBootstrap(i + 1));
-    };
-
-    tryBootstrap(0).then(latest => {
-      if (!latest || latest.format !== this.format) {
-        if (latest) {
-          console.warn(`OSMBuildings texture set: unsupported format ${latest.format}, showing T0 only`);
-        }
+    Promise.all(this.configCdns.map(url =>
+      this.fetchJSON(`${url}textures/${this.region}/latest.json`).catch(() => null)
+    )).then(answers => {
+      const valid = answers.filter(latest => latest && latest.format === this.format && latest.release);
+      if (!valid.length) {
+        const other = answers.find(latest => latest && latest.format !== this.format);
+        console.warn(other ? `OSMBuildings texture set: unsupported format ${other.format}, showing T0 only` :
+          'OSMBuildings texture set: no cdn answered');
         return;
       }
+      const latest = valid.reduce((best, l) => l.release > best.release ? l : best);
       this.release = latest.release;
-      this.mirrors = this.pickMirrorOrder(latest.mirrors || []);
-      return this.fetchFromMirror(latest.manifest).then(manifest => {
+      this.cdns = this.pickCdnOrder(latest.cdns || []);
+      return this.fetchFromCdn(latest.manifest).then(manifest => {
         if (!manifest || manifest.format !== this.format) {
           console.warn('OSMBuildings texture set: manifest missing or of another format');
           return;
@@ -119,21 +115,21 @@ class Texset {
     }).catch(err => console.warn('OSMBuildings texture set:', err.message));
   }
 
-  // weighted random first mirror, the others as failover in their listed order
-  pickMirrorOrder (mirrors) {
-    if (!mirrors.length) {
+  // weighted random first cdn, the others as failover in their listed order
+  pickCdnOrder (cdns) {
+    if (!cdns.length) {
       return [];
     }
-    const total = mirrors.reduce((sum, m) => sum + (m.weight || 1), 0);
+    const total = cdns.reduce((sum, m) => sum + (m.weight || 1), 0);
     let r = Math.random() * total, first = 0;
-    for (let i = 0; i < mirrors.length; i++) {
-      r -= (mirrors[i].weight || 1);
+    for (let i = 0; i < cdns.length; i++) {
+      r -= (cdns[i].weight || 1);
       if (r <= 0) {
         first = i;
         break;
       }
     }
-    return mirrors.slice(first).concat(mirrors.slice(0, first));
+    return cdns.slice(first).concat(cdns.slice(0, first));
   }
 
   //***************************************************************************
@@ -194,7 +190,7 @@ class Texset {
   loadCell (x, y) {
     const key = `${x},${y}`;
     this.cells[key] = 'loading';
-    this.fetchFromMirror(`${this.release}/cells/16/${x}/${y}.json`).then(cell => {
+    this.fetchFromCdn(`${this.release}/cells/16/${x}/${y}.json`).then(cell => {
       if (cell && cell.format !== this.format) {
         cell = null; // other format: T0 only
       }
@@ -218,7 +214,7 @@ class Texset {
     }
     const entry = this.pages[web.file] = { texture: null, ready: false };
 
-    this.fetchFromMirror(`${this.release}/${web.file}`, 'binary').then(buffer => {
+    this.fetchFromCdn(`${this.release}/${web.file}`, 'binary').then(buffer => {
       if (!buffer) {
         return;
       }
@@ -614,10 +610,10 @@ class Texset {
       });
     }
     const cell = this.cells[centreKey];
-    if (cell && cell !== 'loading' && this.mirrors.length) {
+    if (cell && cell !== 'loading' && this.cdns.length) {
       add({
         id: 'texset-credits', text: 'texture credits',
-        url: `${this.mirrors[this.mirrorIndex].url}textures/${this.region}/${this.release}/credits/16/${centre[0]}/${centre[1]}.html`
+        url: `${this.cdns[this.cdnIndex].url}textures/${this.region}/${this.release}/credits/16/${centre[0]}/${centre[1]}.html`
       });
     }
     const signature = JSON.stringify(entries.map(e => [e.id, e.url]));
@@ -646,7 +642,7 @@ class Texset {
   }
 }
 
-Texset.DEFAULT_BOOTSTRAP = ['https://textures.malpy.de/'];
+Texset.DEFAULT_CDNS = ['https://textures-cdn1.malpy.de/'];
 Texset.OUTWARD_TOLERANCE = 45; // degrees, TEXTURE_FORMAT.md wall rules (P1)
 Texset.METERS_PER_DEGREE = 111319.49; // arc lengths of wall chains (TEXTURE_FORMAT.md)
 

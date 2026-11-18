@@ -61,7 +61,7 @@ class OSMBuildings {
    * @param {Object} [options.style] Sets the default building style
    * @param {String} [options.style.color='rgb(220, 210, 200)'] Sets the default building color
    * @param {Object} [options.textureSet] Streams textures per OSM object (format osm3d-texset/0.4, docs/TEXTURE_SET.md); off by default
-   * @param {String|String[]} [options.textureSet.bootstrap='https://textures.malpy.de/'] Entry URL(s) that serve textures/<region>/latest.json
+   * @param {String|String[]} [options.textureSet.cdns='https://textures-cdn1.malpy.de/'] Cdn base URL(s) that serve textures/<region>/latest.json; the highest release among those that answer is used
    * @param {String} [options.textureSet.region='bodensee'] Region of the texture set
    */
   constructor (options = {}) {
