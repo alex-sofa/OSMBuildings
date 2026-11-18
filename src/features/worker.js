@@ -25,6 +25,39 @@ function getOrigin (geometry) {
   }
 }
 
+// Wall edges for texture sets (src/texset/Texset.js): [lonA, latA, lonB, latB, side, base, top] per edge of every ring.
+// side = +1 when the outer face lies to the right of A -> B, -1 when it lies to the left. The outer face of an outer ring
+// faces away from the polygon, the one of an inner ring faces into the courtyard (away from the building solid).
+function getWallEdges (geometry, properties) {
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] :
+    geometry.type === 'MultiPolygon' ? geometry.coordinates : [];
+
+  const levelHeight = 3; // METERS_PER_LEVEL of the triangulation
+  const base = properties.minHeight || (properties.minLevel ? properties.minLevel * levelHeight : 0);
+  let top = null;
+  if (properties.height !== undefined) {
+    top = properties.height - (properties.roofHeight || 0);
+  } else if (properties.levels) {
+    top = properties.levels * levelHeight;
+  }
+
+  const edges = [];
+  polygons.forEach(rings => {
+    rings.forEach((ring, ringIndex) => {
+      let area = 0;
+      for (let i = 0; i < ring.length - 1; i++) {
+        area += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+      }
+      const ccw = area > 0;
+      const side = (ringIndex === 0) === ccw ? 1 : -1;
+      for (let i = 0; i < ring.length - 1; i++) {
+        edges.push([ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1], side, base, top]);
+      }
+    });
+  });
+  return edges;
+}
+
 function getPickingColor (i) {
   i++;
   return [0, (i & 0xff) / 255, ((i >> 8) & 0xff) / 255];
@@ -112,6 +145,8 @@ function processGeoJSON (geojson, options) {
       id = options.id || feature.id,
       pickingColor = getPickingColor(index); // picks per part id - could perhaps use building id
 
+    const walls = getWallEdges(feature.geometry, properties); // before triangulation, which may change the geometry
+
     let vertexCount = tri.vertices.length;
     triangulate(tri, feature, origin);
     vertexCount = (tri.vertices.length - vertexCount) / 3;
@@ -122,7 +157,7 @@ function processGeoJSON (geojson, options) {
     }
 
     properties.bounds = getGeoJSONBounds(feature.geometry);
-    items.push({ id: id, properties: properties, vertexCount: vertexCount });
+    items.push({ id: id, properties: properties, vertexCount: vertexCount, walls: walls });
   });
 
   postResult(items, position, tri);

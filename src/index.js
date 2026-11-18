@@ -60,6 +60,9 @@ class OSMBuildings {
    * @param {Boolean} [options.fastMode=false] Enables faster rendering at cost of image quality.
    * @param {Object} [options.style] Sets the default building style
    * @param {String} [options.style.color='rgb(220, 210, 200)'] Sets the default building color
+   * @param {Object} [options.textureSet] Streams textures per OSM object (format osm3d-texset/0.3, docs/TEXTURE_SET.md); off by default
+   * @param {String|String[]} [options.textureSet.bootstrap='https://textures.malpy.de/'] Entry URL(s) that serve textures/<region>/latest.json
+   * @param {String} [options.textureSet.region='bodensee'] Region of the texture set
    */
   constructor (options = {}) {
     APP = this; // refers to current instance. Should make other globals obsolete.
@@ -145,6 +148,13 @@ class OSMBuildings {
     this._attribution.className = 'osmb-attribution';
     this.container.appendChild(this._attribution);
     this._updateAttribution();
+
+    if (options.textureSet) {
+      this.texset = new Texset(Object.assign({}, options.textureSet, {
+        onAttribution: () => this._updateAttribution(),
+        onChange: () => this.view.speedUp()
+      }));
+    }
 
     this.setDate(new Date());
     this.view.start();
@@ -372,6 +382,14 @@ class OSMBuildings {
     //     attribution.push(layer.attribution);
     //   }
     // });
+    // texture set: one entry per record, each with its own link (and logo, if the record has one)
+    if (this.texset) {
+      const escape = str => String(str).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      this.texset.attribution.forEach(entry => {
+        const logo = entry.logo ? `<img src="${escape(entry.logo.url)}" alt="${escape(entry.logo.alt)}" style="height:1em;vertical-align:middle"> ` : '';
+        attribution.push(`${logo}<a href="${escape(entry.url)}" target="_blank" rel="noopener">${escape(entry.text)}</a>`);
+      });
+    }
     this._attribution.innerHTML = attribution.join(' · ');
   }
 
@@ -623,6 +641,10 @@ class OSMBuildings {
    */
   destroy () {
     this.view.destroy();
+
+    if (this.texset) {
+      this.texset.destroy();
+    }
 
     // this.basemapGrid.destroy();
     // this.dataGrid.destroy();

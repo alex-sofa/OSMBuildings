@@ -13,7 +13,8 @@
     "ambient_from_depth",
     "flat_color",
     "horizon",
-    "blur"
+    "blur",
+    "texset"
   ],
 
   "libs": [
@@ -91,6 +92,9 @@
     "src/view/AmbientMap.js",
     "src/view/Overlay.js",
     "src/view/Horizon.js",
-    "src/view/Blur.js"
+    "src/view/Blur.js",
+    "src/view/Texset.js",
+
+    "src/texset/Texset.js"
   ]
 }

@@ -30,6 +30,7 @@ class View {
       this.Markers = new View.MarkersSimple();
     // }
     this.Basemap = new View.Basemap();
+    this.Texset = new View.Texset();
 
     this.Overlay = new View.Overlay();
     this.ambientMap = new View.AmbientMap();
@@ -57,6 +58,7 @@ class View {
 
         if (!this.shadowsEnabled) {
           this.Buildings.render();
+          this.Texset.render();
           this.Markers.render();
 
           GL.enable(GL.BLEND);
@@ -79,6 +81,7 @@ class View {
           this.ambientMap.render(this.cameraGBuffer.framebuffer.depthTexture, this.cameraGBuffer.framebuffer.renderTexture, viewSize, 2.0);
           this.blurredAmbientMap.render(this.ambientMap.framebuffer.renderTexture, viewSize);
           this.Buildings.render(this.sunGBuffer.framebuffer);
+          this.Texset.render();
           this.Markers.render(this.sunGBuffer.framebuffer);
           this.Basemap.render();
 
