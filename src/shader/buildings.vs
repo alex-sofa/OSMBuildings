@@ -24,6 +24,9 @@ uniform float uFade;
 
 varying vec3 vColor;
 varying vec2 vTexCoord;
+#ifdef USE_POM
+varying vec3 vModelPos;
+#endif
 varying float verticalDistanceToLowerEdge;
 
 const float gradientStrength = 0.4;
@@ -39,6 +42,9 @@ void main() {
 
     vec4 pos = vec4(aPosition.x, aPosition.y, aPosition.z*f, aPosition.w);
     gl_Position = uMatrix * pos;
+#ifdef USE_POM
+    vModelPos = pos.xyz;
+#endif
 
     vec3 color = aColor;
 

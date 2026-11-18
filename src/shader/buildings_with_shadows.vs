@@ -23,6 +23,9 @@ uniform float uFade;
 
 varying vec3 vColor;
 varying vec2 vTexCoord;
+#ifdef USE_POM
+varying vec3 vModelPos;
+#endif
 varying vec3 vNormal;
 varying vec3 vSunRelPosition;
 varying float verticalDistanceToLowerEdge;
@@ -40,6 +43,9 @@ void main() {
 
     vec4 pos = vec4(aPosition.x, aPosition.y, aPosition.z*f, aPosition.w);
     gl_Position = uMatrix * pos;
+#ifdef USE_POM
+    vModelPos = pos.xyz;
+#endif
 
     vec3 color = aColor;
 

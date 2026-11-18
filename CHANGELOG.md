@@ -1,3 +1,11 @@
+# Unreleased
+
+## Added
+
+- optional parallax occlusion mapping for building walls, see docs/PARALLAX_MAPPING.md and the constructor option `parallaxMapping`
+- `#include "name"` in shader files, resolved by build.js from src/shader/name.glsl
+
+
 
 # 4.0.1 @ 2018-08-10 Bugfix
 

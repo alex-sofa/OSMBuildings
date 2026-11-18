@@ -60,6 +60,12 @@ class OSMBuildings {
    * @param {Boolean} [options.fastMode=false] Enables faster rendering at cost of image quality.
    * @param {Object} [options.style] Sets the default building style
    * @param {String} [options.style.color='rgb(220, 210, 200)'] Sets the default building color
+   * @param {Boolean|Object} [options.parallaxMapping=false] Enables parallax occlusion mapping for building walls, which makes the wall texture look like a relief. Needs the WebGL extension OES_standard_derivatives. Pass true for the defaults or an object with the following properties. Can only be set at construction time.
+   * @param {Number} [options.parallaxMapping.heightScale=0.3] Depth of the relief in meters
+   * @param {Number} [options.parallaxMapping.layers=16] Number of ray marching steps per pixel, 2 to 32. More is smoother but slower
+   * @param {Number} [options.parallaxMapping.fadeStart=200] Camera distance in meters at which the effect starts to fade out
+   * @param {Number} [options.parallaxMapping.fadeEnd=400] Camera distance in meters beyond which walls are drawn without the effect
+   * @param {String} [options.parallaxMapping.heightMap] URL of a height map for the wall texture (white is the wall surface, black is the deepest point). Needs power-of-two dimensions. Without it, the height is derived from the brightness of the built-in wall texture
    */
   constructor (options = {}) {
     APP = this; // refers to current instance. Should make other globals obsolete.
@@ -71,6 +77,7 @@ class OSMBuildings {
     }
 
     this.view = new View();
+    this.view.parallaxMapping = View.parseParallaxMappingOptions(options.parallaxMapping);
     this.view.fogColor = Qolor.parse(options.fogColor || FOG_COLOR).toArray();
 
     this.attribution = options.attribution || OSMBuildings.ATTRIBUTION;

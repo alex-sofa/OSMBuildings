@@ -65,6 +65,13 @@ function escapeCode (str) {
 
 //*****************************************************************************
 
+// reads a shader file and replaces lines like #include "name" with the content of src/shader/name.glsl
+function readShader (file) {
+  return readFiles([file]).replace(/^[ \t]*#include[ \t]+"([\w-]+)"[ \t]*$/gm, (match, name) => {
+    return readFiles([`src/shader/${name}.glsl`]);
+  });
+}
+
 function taskShaders (shaders) {
   const src = 'src/shader';
 
@@ -73,8 +80,8 @@ function taskShaders (shaders) {
   shaders.forEach(name => {
     str += `shaders['${name}'] = ${JSON.stringify({
       name: name,
-      vs: escapeCode(readFiles([`${src}/${name}.vs`]), 'ascii'),
-      fs: escapeCode(readFiles([`${src}/${name}.fs`]), 'ascii')
+      vs: escapeCode(readShader(`${src}/${name}.vs`), 'ascii'),
+      fs: escapeCode(readShader(`${src}/${name}.fs`), 'ascii')
     })};\n\n`;
   });
 

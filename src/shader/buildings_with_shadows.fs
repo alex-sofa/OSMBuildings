@@ -1,3 +1,7 @@
+#ifdef USE_POM
+  #extension GL_OES_standard_derivatives : enable
+#endif
+
 
 #ifdef GL_FRAGMENT_PRECISION_HIGH
   precision highp float;
@@ -32,6 +36,8 @@ float isSeenBySun(const vec2 sunViewNDC, const float depth, const float bias) {
   //compare depth values not in reciprocal but in linear depth
   return step(1.0/depthFromTexture, 1.0/depth + bias);
 }
+
+#include "parallax_mapping"
 
 void main() {
 
@@ -70,7 +76,12 @@ void main() {
     diffuse *= 1.0 - (shadowStrength * (1.0 - occludedBySun));
   }
 
-  vec3 color = vColor* texture2D( uWallTexIndex, vTexCoord.st).rgb +
+  vec2 texCoord = vTexCoord;
+#ifdef USE_POM
+  texCoord = parallaxTexCoord(vTexCoord);
+#endif
+
+  vec3 color = vColor* texture2D( uWallTexIndex, texCoord.st).rgb +
               (diffuse/1.5) * uLightColor;
 
   float fogIntensity = (verticalDistanceToLowerEdge - uFogDistance) / uFogBlurDistance;

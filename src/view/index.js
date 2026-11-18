@@ -1,6 +1,26 @@
 
 class View {
 
+  // normalizes the parallaxMapping constructor option, returns null if the effect is not requested
+  static parseParallaxMappingOptions (option) {
+    if (!option) {
+      return null;
+    }
+
+    const o = typeof option === 'object' ? option : {};
+    const number = (value, defaultValue) => isFinite(parseFloat(value)) ? parseFloat(value) : defaultValue;
+
+    const fadeStart = Math.max(number(o.fadeStart, 200), 0);
+
+    return {
+      heightScale: Math.max(number(o.heightScale, 0.3), 0),
+      layers: Math.min(Math.max(Math.round(number(o.layers, 16)), 2), 32),
+      fadeStart: fadeStart,
+      fadeEnd: Math.max(number(o.fadeEnd, 400), fadeStart),
+      heightMap: o.heightMap || null
+    };
+  }
+
   getViewQuad () {
     return getViewQuad(this.viewProjMatrix.data,  (this.fogDistance + this.fogBlurDistance), this.viewDirOnMap);
   }
@@ -152,6 +172,10 @@ class View {
       .rotateX(APP.tilt)
       .translateBy(0, 8 / scale, 0) // corrective offset to match Leaflet's coordinate system (value was determined empirically)
       .translateBy(0, 0, -1220 / scale); //move away to simulate zoom; -1220 scales APP tiles to ~256px
+
+    // the projection below shifts the geometry in view space, which puts the camera
+    // at this position in view space instead of the origin
+    this.cameraViewPos = [0, height / (2 * scale), 0];
 
     this.viewDirOnMap = [Math.sin(APP.rotation / 180 * Math.PI), -Math.cos(APP.rotation / 180 * Math.PI)];
 
